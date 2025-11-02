@@ -1,23 +1,33 @@
-// src/pages/ResetPassword.jsx
+import React, { useState } from "react";
 import { useParams } from "react-router-dom";
-import { Link } from "react-router-dom";
+import api from "../services/api";
 
-export default function ResetPassword() {
+const ResetPassword = () => {
   const { token } = useParams();
+  const [password, setPassword] = useState("");
+  const [message, setMessage] = useState("");
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await api.post(`/auth/reset-password/${token}`, { password });
+      setMessage(res.data.message);
+    } catch (err) {
+      setMessage(err.response?.data?.error || "Reset failed");
+    }
+  };
 
   return (
     <div className="auth-container">
       <h2>Reset Password</h2>
-      <form className="auth-form">
-        <input type="password" placeholder="New Password" required />
-        <input type="password" placeholder="Confirm Password" required />
+      <form onSubmit={handleSubmit}>
+        <input type="password" placeholder="Enter new password" value={password} onChange={(e) => setPassword(e.target.value)} required />
         <button type="submit">Reset Password</button>
       </form>
-      <div className="auth-links">
-        <p>
-          <Link to="/login">Back to Login</Link>
-        </p>
-      </div>
+      <p>{message}</p>
+      <a href="/login">Back to Login</a>
     </div>
   );
-}
+};
+
+export default ResetPassword;

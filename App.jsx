@@ -1,20 +1,34 @@
+// frontend/src/App.jsx
+import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
-import Signup from "./pages/Signup";
 import Login from "./pages/Login";
-import ForgotPassword from "./pages/ForgotPassword";
-import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
+import ResetPassword from "./pages/ResetPassword";
+import ForgotPassword from "./pages/ForgotPassword";
+import ProtectedRoute from "./services/ProtectedRoute";
+import Signup from "./pages/Signup";
 
 export default function App() {
   return (
     <Routes>
-      {/* Default route goes to Login */}
+      {/* Redirect root to login */}
       <Route path="/" element={<Navigate to="/login" />} />
-      <Route path="/signup" element={<Signup />} />
+
+      {/* Public routes */}
       <Route path="/login" element={<Login />} />
+      <Route path="/signup" element={<Signup />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password/:token" element={<ResetPassword />} />
-      <Route path="/dashboard" element={<Dashboard />} />
+
+      {/* Protected route */}
+      <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute>
+            <Dashboard />
+          </ProtectedRoute>
+        }
+      />
     </Routes>
   );
 }

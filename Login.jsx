@@ -1,46 +1,39 @@
-import { useState } from "react";
-import axios from "axios";
+import React, { useState } from "react";
+import api from "../services/api";
 
-export default function Login() {
+const Login = () => {
   const [form, setForm] = useState({ email: "", password: "" });
-  const [msg, setMsg] = useState("");
+  const [message, setMessage] = useState("");
 
-  const handleChange = (e) =>
+  const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await axios.post(
-        `${import.meta.env.VITE_API_URL}/users/login`,
-        form
-      );
-      localStorage.setItem("token", res.data.token); // store JWT
-      setMsg("✅ Logged in as " + res.data.name);
+      const res = await api.post("/auth/login", form);
+      localStorage.setItem("token", res.data.token);
+      setMessage("Login successful!");
+      window.location.href = "/dashboard";
     } catch (err) {
-      setMsg("❌ " + (err.response?.data?.message || "Error"));
+      setMessage(err.response?.data?.error || "Login failed");
     }
   };
 
   return (
-    <div>
+    <div className="auth-container">
       <h2>Login</h2>
       <form onSubmit={handleSubmit}>
-        <input
-          name="email"
-          type="email"
-          placeholder="Email"
-          onChange={handleChange}
-        /><br />
-        <input
-          name="password"
-          type="password"
-          placeholder="Password"
-          onChange={handleChange}
-        /><br />
+        <input name="email" placeholder="Email" value={form.email} onChange={handleChange} required />
+        <input name="password" type="password" placeholder="Password" value={form.password} onChange={handleChange} required />
         <button type="submit">Login</button>
       </form>
-      <p>{msg}</p>
+      <p>{message}</p>
+      <a href="/signup">Don't have an account? Sign up</a><br />
+      <a href="/forgot-password">Forgot password?</a>
     </div>
   );
-}
+};
+
+export default Login;

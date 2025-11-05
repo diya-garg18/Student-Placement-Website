@@ -8,6 +8,7 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ProtectedRoute from "./services/ProtectedRoute";
 import Signup from "./pages/Signup";
 
+
 export default function App() {
   return (
     <Routes>

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import api from "../services/api";
+import "../styles/Auth.css";
 
 const Signup = () => {
   const [form, setForm] = useState({ name: "", email: "", password: "" });

@@ -76,7 +76,6 @@ const handleAnalyze = async () => {
         <ul className="sidebar-menu">
           <li onClick={() => setActiveTab("dashboard")}>🏠 Overview</li>
           <li onClick={() => { setActiveTab("resumes"); fetchResumes(); }}>📄 My Resumes</li>
-          <li>🏆 Certifications</li>
           <li>⚙️ Settings</li>
         </ul>
         <button className="logout-btn" onClick={async ()=>{await api.post("/auth/logout");navigate("/login");}}>
@@ -197,6 +196,23 @@ const handleAnalyze = async () => {
 
         <h4>❌ Missing Keywords</h4>
         <p>{matchResult.missing_keywords.join(", ")}</p>
+        {matchResult.suggested_courses && matchResult.suggested_courses.length > 0 && (
+  <div style={{ marginTop: "15px" }}>
+    <h4>🎓 Recommended Courses & Certifications</h4>
+    <ul>
+      {matchResult.suggested_courses.map((course, i) => (
+        <li key={i} style={{ marginBottom: "8px" }}>
+          <strong>{course.name}</strong> – {course.reason}
+          <br />
+          <a href={course.link} target="_blank" rel="noopener noreferrer">
+            {course.link}
+          </a>
+        </li>
+      ))}
+    </ul>
+  </div>
+)}
+
       </div>
     </div>
   )}

@@ -11,6 +11,23 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [resumes, setResumes] = useState([]);
   const navigate = useNavigate();
+const [jobDescription, setJobDescription] = useState("");
+const [matchResult, setMatchResult] = useState(null);
+
+const handleMatch = async () => {
+  if (!resumeText.trim() || !jobDescription.trim()) {
+    return alert("Please paste both resume and job description!");
+  }
+  setLoading(true);
+  try {
+    const res = await api.post("/resume/match", { resumeText, jobDescription });
+    setMatchResult(res.data.data);
+  } catch {
+    alert("Error matching resume and job description");
+  } finally {
+    setLoading(false);
+  }
+};
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -29,20 +46,27 @@ export default function Dashboard() {
     setResumes(res.data);
   };
 
-  const handleAnalyze = async () => {
-    if (!resumeText.trim()) return alert("Please paste your resume text!");
-    setLoading(true);
-    try {
-      const res = await api.post("/resume/upload", { resumeText });
-      setAnalysis(res.data);
-      setResumeText("");
-      fetchResumes();
-    } catch {
-      alert("Error analyzing resume");
-    } finally {
-      setLoading(false);
-    }
-  };
+const handleAnalyze = async () => {
+  if (!resumeText.trim()) return alert("Please paste your resume text!");
+  setLoading(true);
+  try {
+    const res = await api.post("/resume/upload", { resumeText });
+
+    const result = {
+      score: res.data.score || 0,
+      feedback: res.data.feedback || "No feedback available.",
+    };
+
+    setAnalysis(result); // ✅ only keep needed fields
+    setResumeText("");
+    fetchResumes();
+  } catch {
+    alert("Error analyzing resume");
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   return (
     <div className="dashboard-container">
@@ -80,8 +104,48 @@ export default function Dashboard() {
                 </div>
                 {analysis && (
   <div className="analysis-result">
-    <h3>Resume Readiness Score: {analysis.score}/100</h3>
-    <pre>{analysis.feedback}</pre>
+    <div
+      style={{
+        background: "#f3f4f6",
+        borderRadius: "10px",
+        padding: "15px",
+        marginBottom: "15px",
+        textAlign: "center",
+        boxShadow: "0 2px 5px rgba(0,0,0,0.1)"
+      }}
+    >
+      <h2 style={{ margin: "0", color: "#1e3a8a" }}>
+        🎯 Resume Readiness Score
+      </h2>
+      <h1 style={{ margin: "5px 0", color: "#2563eb" }}>
+        {analysis.score}/100
+      </h1>
+      <p style={{ color: "#4b5563" }}>
+        {analysis.score >= 85
+          ? "Excellent! Recruiter-ready resume 💼"
+          : analysis.score >= 70
+          ? "Good — just refine a few areas 🚀"
+          : analysis.score >= 50
+          ? "Average — needs noticeable improvement 🧠"
+          : "Weak resume — needs restructuring ❗"}
+      </p>
+    </div>
+
+    <h3>🧠 Detailed Analysis</h3>
+    <pre
+      style={{
+        whiteSpace: "pre-wrap",
+        background: "#f9fafb",
+        border: "1px solid #e5e7eb",
+        borderRadius: "8px",
+        padding: "10px",
+        fontSize: "0.95rem",
+        color: "#111827"
+      }}
+    >
+      {analysis.feedback}
+    </pre>
+
     <button
       onClick={() => setAnalysis(null)}
       style={{
@@ -99,13 +163,44 @@ export default function Dashboard() {
   </div>
 )}
 
+
               </div>
 
               <div className="card">
-                <h3>💼 Match Resume with Job Description</h3>
-                <p>Paste a job description and check your compatibility.</p>
-                <button>Match Now</button>
-              </div>
+  <h3>💼 Match Resume with Job Description</h3>
+  <p>Paste your resume and a job description to check compatibility.</p>
+
+  <div className="analyze-section">
+    <textarea
+      placeholder="Paste your resume text here..."
+      value={resumeText}
+      onChange={(e) => setResumeText(e.target.value)}
+      style={{ marginBottom: "10px" }}
+    />
+    <textarea
+      placeholder="Paste the job description here..."
+      value={jobDescription}
+      onChange={(e) => setJobDescription(e.target.value)}
+    />
+    <button onClick={handleMatch} disabled={loading}>
+      {loading ? "Matching..." : "Match Now"}
+    </button>
+  </div>
+
+  {matchResult && (
+    <div className="analysis-result">
+      <h2 style={{ color: "#1e3a8a" }}>🎯 Match Score: {matchResult.match_score}%</h2>
+      <p style={{ color: "#4b5563" }}>{matchResult.summary}</p>
+      <div>
+        <h4>✅ Matching Keywords</h4>
+        <p>{matchResult.matching_keywords.join(", ")}</p>
+
+        <h4>❌ Missing Keywords</h4>
+        <p>{matchResult.missing_keywords.join(", ")}</p>
+      </div>
+    </div>
+  )}
+</div>
             </div>
           </>
         )}

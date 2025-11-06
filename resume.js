@@ -133,7 +133,7 @@ Use this scoring guide:
 76–85: Strong
 86–100: Exceptional and recruiter-ready
 
-Return **only valid JSON** in the following format:
+Return plain textin the following format:
 
 {
   "parsed_resume": { ... },

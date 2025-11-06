@@ -45,6 +45,15 @@ const handleMatch = async () => {
     const res = await api.get("/resume/history");
     setResumes(res.data);
   };
+  useEffect(() => {
+  // Reset everything when page refreshes
+  setResumeText("");
+  setJobDescription("");
+  setAnalysis(null);
+  setMatchResult(null);
+  setActiveTab("dashboard");
+}, []);
+
 
 const handleAnalyze = async () => {
   if (!resumeText.trim()) return alert("Please paste your resume text!");

@@ -222,9 +222,17 @@ ${jobDescription}
 
     // ✅ Save to DB (optional)
     await db.query(
-      "UPDATE resumes SET job_description = $1 WHERE user_id = $2 ORDER BY created_at DESC LIMIT 1",
-      [jobDescription, userId]
-    );
+  `UPDATE resumes 
+   SET job_description = $1 
+   WHERE id = (
+     SELECT id FROM resumes 
+     WHERE user_id = $2 
+     ORDER BY created_at DESC 
+     LIMIT 1
+   )`,
+  [jobDescription, userId]
+);
+
 
     res.json({
       message: "✅ Resume-job match completed",

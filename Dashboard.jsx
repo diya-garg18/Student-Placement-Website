@@ -144,21 +144,6 @@ const handleAnalyze = async () => {
     >
       {analysis.feedback}
     </pre>
-
-    <button
-      onClick={() => setAnalysis(null)}
-      style={{
-        marginTop: "10px",
-        background: "#e11d48",
-        color: "white",
-        border: "none",
-        borderRadius: "6px",
-        padding: "8px 12px",
-        cursor: "pointer",
-      }}
-    >
-      Clear Result
-    </button>
   </div>
 )}
 

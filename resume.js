@@ -3,36 +3,37 @@ import dotenv from "dotenv";
 import db from "../config/db.js";
 import authMiddleware from "../middleware/authMiddleware.js";
 import fetch from "node-fetch";
+import OpenAI from "openai";
 
 dotenv.config();
 
 const router = express.Router();
-console.log("🔑 GEMINI_API_KEY loaded:", !!process.env.GEMINI_API_KEY);
+console.log("🔑 GROQ_API_KEY loaded:", !!process.env.GROQ_API_KEY);
 
-// ✅ Function to call Gemini API via REST
-async function analyzeResume(prompt) {
-  const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${GEMINI_API_KEY}`;
+// ✅ Create Groq client (OpenAI compatible)
+const groqClient = new OpenAI({
+  apiKey: process.env.GROQ_API_KEY,
+  baseURL: "https://api.groq.com/openai/v1",
+});
 
-  const response = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-    }),
-  });
+// 🔹 Helper function to call Groq API
+async function callGroqAPI(prompt) {
+  try {
+    const completion = await groqClient.chat.completions.create({
+      model: "llama-3.1-8b-instant",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.7,
+    });
 
-  const data = await response.json();
-
-  if (data.error) {
-    console.error("❌ Gemini API Error:", data.error);
-    throw new Error(data.error.message || "Gemini API call failed");
+    const text = completion.choices[0].message.content;
+    return text.trim();
+  } catch (error) {
+    console.error("❌ Groq API Error:", error);
+    throw new Error("Groq API call failed");
   }
-
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-  return text;
 }
-// ✅ Get all resumes for logged-in user
+
+// ✅ Fetch user’s resume history
 router.get("/history", authMiddleware, async (req, res) => {
   try {
     const userId = req.user.id;
@@ -47,69 +48,125 @@ router.get("/history", authMiddleware, async (req, res) => {
   }
 });
 
-
 // ✅ Resume analysis route
 router.post("/upload", authMiddleware, async (req, res) => {
   try {
     const { resumeText } = req.body;
     const userId = req.user.id;
 
-    if (!resumeText) {
-      return res.status(400).json({ error: "No resume text provided" });
+    if (!resumeText || resumeText.trim().length < 30) {
+      return res.status(400).json({ error: "Please paste a valid resume text." });
     }
 
-    const prompt = `
-You are an expert technical recruiter and resume screening AI used by Fortune 500 companies.
-You must evaluate resumes with **extremely strict standards**.
+    // 🧠 New unified extraction + analysis prompt
+    const analysisPrompt = `
+You are a professional resume parsing and career analysis expert.
 
-Analyze the following resume text and provide:
----
+From the given *plain text resume*, first extract structured information in pure JSON format using this schema:
+
+{
+  "name": "",
+  "email": "",
+  "phone": "",
+  "linkedin": "",
+  "github": "",
+  "education": [
+    {
+      "degree": "",
+      "institution": "",
+      "year_of_graduation": "",
+      "gpa_or_percentage": ""
+    }
+  ],
+  "skills": [],
+  "projects": [
+    {
+      "title": "",
+      "description": "",
+      "technologies_used": []
+    }
+  ],
+  "experience": [
+    {
+      "role": "",
+      "organization": "",
+      "duration": "",
+      "achievements": ""
+    }
+  ],
+  "certifications": [],
+  "achievements": [],
+  "career_objective": ""
+}
+
 Resume Text:
 ${resumeText}
----
 
-**Rules:**
-- Be objective, not generous.
-- If the text is nonsense, incomplete, or doesn't resemble a real resume, score under 10/100.
-- Only give above 80 if it clearly has proper structure, experience, measurable impact, and professional formatting.
-- Never give 100/100 unless it's an exceptional, fully-detailed resume.
+After extracting JSON, immediately perform a **career analysis** using that structured data and generate a professional evaluation report covering:
 
-**Scoring Rubric (Total 100):**
-1. Structure & Formatting (15)
-2. Experience Relevance (20)
-3. Skill Coverage (20)
-4. Language & Clarity (15)
-5. Quantifiable Achievements (15)
-6. Professionalism & Job Readiness (15)
+1. **Overall Summary** – Brief overview of the candidate.
+2. **Skillset Evaluation** – Assess balance and relevance of technical + soft skills.
+3. **Education Analysis** – Comment on academic strength and clarity.
+4. **Projects & Experience** – Highlight impact, depth, and relevance.
+5. **Career Objective Assessment** – Evaluate alignment with experience.
+6. **Strengths & Achievements** – Identify standout qualities.
+7. **Improvement Areas** – Suggest missing or improvable areas.
+8. **Recommended Career Paths** – Suggest 2–3 roles that fit the profile.
+9. **Final Verdict** – One-paragraph summary.
 
-**Output Format (strict JSON):**
+Finally, assign a **readiness score (0–100)** based on:
+
+| Category | Weight |
+|-----------|---------|
+| Structure & Clarity | 15 |
+| Skill Relevance | 20 |
+| Experience / Projects | 20 |
+| Education | 15 |
+| Language & Professionalism | 15 |
+| Quantifiable Impact | 15 |
+
+Use this scoring guide:
+0–20: Unusable or irrelevant
+21–40: Poor quality
+41–60: Basic / Entry-level
+61–75: Average
+76–85: Strong
+86–100: Exceptional and recruiter-ready
+
+Return **only valid JSON** in the following format:
+
 {
+  "parsed_resume": { ... },
+  "analysis": {
+    "overall_summary": "",
+    "skills_evaluation": "",
+    "education_analysis": "",
+    "projects_experience": "",
+    "career_objective_assessment": "",
+    "strengths": [],
+    "improvement_areas": [],
+    "recommended_roles": [],
+    "final_verdict": ""
+  },
   "score_breakdown": {
     "structure": <0-15>,
-    "experience": <0-20>,
     "skills": <0-20>,
+    "experience": <0-20>,
+    "education": <0-15>,
     "language": <0-15>,
-    "impact": <0-15>,
-    "professionalism": <0-15>
+    "impact": <0-15>
   },
-  "total_score": <0-100>,
-  "strengths": ["...", "...", "..."],
-  "improvements": ["...", "...", "..."],
-  "summary": "one line summary"
+  "total_score": <0-100>
 }
 `;
 
+    const analysis = await callGroqAPI(analysisPrompt);
 
-    // 🔹 Call Gemini REST API
-    const analysis = await analyzeResume(prompt);
+    // Extract total score
+    const match = analysis.match(/"total_score"\s*:\s*(\d+)/);
+    const readinessScore = match ? Math.min(parseInt(match[1]), 100) : 0;
 
-    // 🔹 Extract score (fallback to random if not found)
-    const match = analysis.match(/\b(\d{2,3})\b/);
-    const readinessScore = match
-      ? Math.min(parseInt(match[1]), 100)
-      : Math.floor(Math.random() * 51) + 50;
-
-    // 🔹 Save in DB
+    // Save result in DB
     const dbResult = await db.query(
       "INSERT INTO resumes (user_id, resume_text, readiness_score, feedback) VALUES ($1, $2, $3, $4) RETURNING *",
       [userId, resumeText, readinessScore, analysis]
@@ -122,7 +179,7 @@ ${resumeText}
       resume: dbResult.rows[0],
     });
   } catch (err) {
-    console.error("Gemini API error:", err);
+    console.error("❌ Resume analysis failed:", err);
     res.status(500).json({ error: "Failed to analyze resume" });
   }
 });

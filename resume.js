@@ -185,16 +185,32 @@ router.post("/match", authMiddleware, async (req, res) => {
 
     // 🧠 Prompt for Groq
     const prompt = `
-You are an AI resume-job matcher. 
-Compare the following resume and job description, extract keywords, and compute a similarity score (0–100). 
-Also, highlight matching and missing keywords.
+You are an AI resume-job matcher and career advisor.
 
-Return valid JSON only:
+Compare the following resume and job description. Perform these tasks:
+
+1. Compute a similarity score (0–100).
+2. Extract matching and missing keywords.
+3. Provide a short summary of how well the candidate fits the job.
+4. Suggest **specific online courses or certifications** that will help the candidate bridge the gap.
+   - Include 3–5 recommendations.
+   - Prefer Coursera, Udemy, Google Career Certificates, or LinkedIn Learning.
+   - Provide **course name, short reason, and direct link**.
+
+Return only valid JSON in this format:
+
 {
   "match_score": <0–100>,
   "matching_keywords": [],
   "missing_keywords": [],
-  "summary": ""
+  "summary": "",
+  "suggested_courses": [
+    {
+      "name": "",
+      "reason": "",
+      "link": ""
+    }
+  ]
 }
 
 Resume:
@@ -203,6 +219,7 @@ ${resumeText}
 Job Description:
 ${jobDescription}
 `;
+
 
     const response = await callGroqAPI(prompt);
 

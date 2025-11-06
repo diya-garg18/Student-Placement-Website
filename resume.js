@@ -173,5 +173,69 @@ Return **only valid JSON** in this format (no explanation text outside JSON):
     res.status(500).json({ error: "Failed to analyze resume" });
   }
 });
+// ✅ Match Resume with Job Description
+router.post("/match", authMiddleware, async (req, res) => {
+  try {
+    const { resumeText, jobDescription } = req.body;
+    const userId = req.user.id;
+
+    if (!resumeText || !jobDescription) {
+      return res.status(400).json({ error: "Please provide both resume text and job description." });
+    }
+
+    // 🧠 Prompt for Groq
+    const prompt = `
+You are an AI resume-job matcher. 
+Compare the following resume and job description, extract keywords, and compute a similarity score (0–100). 
+Also, highlight matching and missing keywords.
+
+Return valid JSON only:
+{
+  "match_score": <0–100>,
+  "matching_keywords": [],
+  "missing_keywords": [],
+  "summary": ""
+}
+
+Resume:
+${resumeText}
+
+Job Description:
+${jobDescription}
+`;
+
+    const response = await callGroqAPI(prompt);
+
+    let jsonString = response
+      .replace(/```json/gi, "")
+      .replace(/```/g, "")
+      .trim();
+
+    let matchData = { match_score: 0, matching_keywords: [], missing_keywords: [], summary: "" };
+    try {
+      matchData = JSON.parse(jsonString);
+    } catch (err) {
+      console.warn("⚠️ Could not parse Groq JSON, fallback to regex");
+      const scoreMatch = response.match(/"match_score"\s*:\s*(\d+)/);
+      matchData.match_score = scoreMatch ? parseInt(scoreMatch[1]) : 0;
+    }
+
+    // ✅ Save to DB (optional)
+    await db.query(
+      "UPDATE resumes SET job_description = $1 WHERE user_id = $2 ORDER BY created_at DESC LIMIT 1",
+      [jobDescription, userId]
+    );
+
+    res.json({
+      message: "✅ Resume-job match completed",
+      data: matchData,
+    });
+  } catch (err) {
+    console.error("❌ Match analysis failed:", err);
+    res.status(500).json({ error: "Failed to analyze resume-job match" });
+  }
+});
+
+
 
 export default router;

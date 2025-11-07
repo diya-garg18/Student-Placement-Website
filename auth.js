@@ -120,5 +120,15 @@ router.post("/reset-password/:token", async (req, res) => {
     res.status(500).json({ error: "Password reset failed" });
   }
 });
+const handleLogout = () => {
+  // 🧹 Clear any saved authentication data
+  localStorage.removeItem("token");
+  localStorage.removeItem("user");
+  sessionStorage.clear(); // optional — clears temporary session data too
+
+  // ✅ Redirect to login page
+  navigate("/login");
+};
+
 
 export default router;

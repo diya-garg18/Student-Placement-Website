@@ -155,11 +155,17 @@ const handleMatch = async () => {
   }
 };
 
-  // ✅ Logout
-  const handleLogout = async () => {
-    await api.post("/auth/logout");
-    navigate("/login");
-  };
+// ✅ Logout
+const handleLogout = () => {
+  // Clear local/session storage
+  localStorage.removeItem("token");
+  localStorage.removeItem("user");
+  sessionStorage.clear();
+
+  // Redirect to login
+  navigate("/login");
+};
+
 
   return (
     <div className="dashboard-container">

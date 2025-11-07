@@ -57,122 +57,74 @@ router.post("/upload", authMiddleware, async (req, res) => {
       return res.status(400).json({ error: "Please paste a valid resume text." });
     }
 
-    // 🧠 Prompt
-    const analysisPrompt = `
-You are a professional resume parsing and career analysis expert.
+    // 🧠 Prompt for Groq (cleaner + consistent format)
+    const prompt = `
+You are an expert career advisor and resume evaluator.
 
-From the given *plain text resume*, first extract structured information in pure JSON format using this schema:
+Analyze the following resume and return your response in **strict JSON** following this structure:
 
 {
-  "name": "",
-  "email": "",
-  "phone": "",
-  "linkedin": "",
-  "github": "",
-  "education": [
-    { "degree": "", "institution": "", "year_of_graduation": "", "gpa_or_percentage": "" }
-  ],
-  "skills": [],
-  "projects": [
-    { "title": "", "description": "", "technologies_used": [] }
-  ],
-  "experience": [
-    { "role": "", "organization": "", "duration": "", "achievements": "" }
-  ],
-  "certifications": [],
-  "achievements": [],
-  "career_objective": ""
+  "score": <0–100>,
+  "summary": "",
+  "strengths": [],
+  "weaknesses": [],
+  "suggestions": []
 }
 
-Resume Text:
+Guidelines:
+- "score" reflects how strong the resume is overall.
+- Be concise and objective in "summary".
+- "strengths" should highlight well-presented areas.
+- "weaknesses" should point out gaps or unclear sections.
+- "suggestions" should give 3–5 specific improvement actions (e.g., “Add quantifiable results”, “Include technical skills section”).
+- Do NOT include markdown or extra text outside JSON.
+
+Resume:
 ${resumeText}
-
-After extracting JSON, immediately perform a **career analysis** covering:
-
-1. **Overall Summary**
-2. **Skillset Evaluation**
-3. **Education Analysis**
-4. **Projects & Experience**
-5. **Career Objective Assessment**
-6. **Strengths & Achievements**
-7. **Improvement Areas**
-8. **Recommended Career Paths**
-9. **Final Verdict**
-
-Finally, assign a **readiness score (0–100)** based on:
-
-| Category | Weight |
-|-----------|---------|
-| Structure & Clarity | 15 |
-| Skill Relevance | 20 |
-| Experience / Projects | 20 |
-| Education | 15 |
-| Language & Professionalism | 15 |
-| Quantifiable Impact | 15 |
-
-Return **only valid JSON** in this format (no explanation text outside JSON):
-
-{
-  "parsed_resume": { ... },
-  "analysis": {
-    "overall_summary": "",
-    "skills_evaluation": "",
-    "education_analysis": "",
-    "projects_experience": "",
-    "career_objective_assessment": "",
-    "strengths": [],
-    "improvement_areas": [],
-    "recommended_roles": [],
-    "final_verdict": ""
-  },
-  "score_breakdown": {
-    "structure": <0-15>,
-    "skills": <0-20>,
-    "experience": <0-20>,
-    "education": <0-15>,
-    "language": <0-15>,
-    "impact": <0-15>
-  },
-  "total_score": <0-100>
-}
 `;
 
     // 🔹 Call Groq API
-    const analysis = await callGroqAPI(analysisPrompt);
+    const response = await callGroqAPI(prompt);
 
-    // 🔹 Clean up and extract JSON
-    let jsonString = analysis
-      .replace(/```json/gi, "")
-      .replace(/```/g, "")
-      .trim();
+    // 🧹 Clean JSON
+    const cleaned = response.replace(/```json/gi, "").replace(/```/g, "").trim();
 
-    let readinessScore = 0;
+    let result;
     try {
-      const parsed = JSON.parse(jsonString);
-      readinessScore = Math.min(parseInt(parsed.total_score) || 0, 100);
-    } catch (jsonErr) {
-      console.warn("⚠️ JSON parse failed, using regex fallback");
-      const match = analysis.match(/"total_score"\s*:\s*(\d+)/);
-      readinessScore = match ? Math.min(parseInt(match[1]), 100) : 0;
+      result = JSON.parse(cleaned);
+    } catch (err) {
+      console.warn("⚠️ Could not parse JSON, using fallback parser");
+      const scoreMatch = response.match(/"score"\s*:\s*(\d+)/);
+      result = {
+        summary: "Partial analysis due to formatting issue.",
+        score: scoreMatch ? parseInt(scoreMatch[1]) : 0,
+        strengths: [],
+        weaknesses: [],
+        suggestions: []
+      };
     }
 
-    // ✅ Save result
+    const readinessScore = Math.min(result.score || 0, 100);
+
+    // ✅ Save in DB
     const dbResult = await db.query(
       "INSERT INTO resumes (user_id, resume_text, readiness_score, feedback) VALUES ($1, $2, $3, $4) RETURNING *",
-      [userId, resumeText, readinessScore, analysis]
+      [userId, resumeText, readinessScore, JSON.stringify(result, null, 2)]
     );
 
+    // ✅ Return consistent structure
     res.json({
       message: "✅ Resume analyzed successfully!",
-      score: readinessScore,
-      feedback: analysis,
+      data: result,
       resume: dbResult.rows[0],
     });
+
   } catch (err) {
     console.error("❌ Resume analysis failed:", err);
     res.status(500).json({ error: "Failed to analyze resume" });
   }
 });
+
 // ✅ Match Resume with Job Description
 router.post("/match", authMiddleware, async (req, res) => {
   try {

@@ -61,27 +61,66 @@ router.post("/upload", authMiddleware, async (req, res) => {
     const prompt = `
 You are an expert career advisor and resume evaluator.
 
-Analyze the following resume and return your response in **strict JSON** following this structure:
+Evaluate the given resume using a detailed scoring system based on multiple key criteria.
+
+Return your response in **strict JSON only**, following this structure:
 
 {
-  "score": <0–100>,
+  "total_score": <0–100>,
+  "criteria_breakdown": {
+    "Formatting_and_Presentation": {
+      "score": <0–20>,
+      "remarks": ""
+    },
+    "Clarity_and_Structure": {
+      "score": <0–15>,
+      "remarks": ""
+    },
+    "Education_and_Experience_Relevance": {
+      "score": <0–20>,
+      "remarks": ""
+    },
+    "Technical_Skills_and_Tools": {
+      "score": <0–15>,
+      "remarks": ""
+    },
+    "Achievements_and_Impact": {
+      "score": <0–15>,
+      "remarks": ""
+    },
+    "Language_and_Professional_Tone": {
+      "score": <0–15>,
+      "remarks": ""
+    }
+  },
   "summary": "",
   "strengths": [],
   "weaknesses": [],
   "suggestions": []
 }
 
-Guidelines:
-- "score" reflects how strong the resume is overall.
-- Be concise and objective in "summary".
-- "strengths" should highlight well-presented areas.
-- "weaknesses" should point out gaps or unclear sections.
-- "suggestions" should give 3–5 specific improvement actions (e.g., “Add quantifiable results”, “Include technical skills section”).
-- Do NOT include markdown or extra text outside JSON.
+Scoring Guidelines:
+- Each criterion is scored independently, and the sum of all scores = 100.
+- "Formatting_and_Presentation" evaluates visual clarity, section order, spacing, and readability.
+- "Clarity_and_Structure" checks logical flow, clear headings, and concise language.
+- "Education_and_Experience_Relevance" evaluates if academic and work experiences align with target roles.
+- "Technical_Skills_and_Tools" checks for completeness and relevance of listed skills.
+- "Achievements_and_Impact" rewards quantifiable results, measurable outcomes, and initiative shown.
+- "Language_and_Professional_Tone" evaluates grammar, tone, and use of professional vocabulary.
+
+The final "total_score" should be a sum of all the above category scores.
+
+Finally:
+- Keep the "summary" concise (1–3 sentences).
+- "strengths" should highlight what is done well.
+- "weaknesses" should point out clear gaps.
+- "suggestions" should provide 3–6 actionable improvements.
+- Do NOT include markdown, commentary, or text outside the JSON format.
 
 Resume:
 ${resumeText}
 `;
+
 
     // 🔹 Call Groq API
     const response = await callGroqAPI(prompt);
@@ -104,7 +143,7 @@ ${resumeText}
       };
     }
 
-    const readinessScore = Math.min(result.score || 0, 100);
+const readinessScore = Math.min(result.total_score || 0, 100);
 
     // ✅ Save in DB
     const dbResult = await db.query(
@@ -216,3 +255,5 @@ ${jobDescription}
 
 
 export default router;
+
+resume.js

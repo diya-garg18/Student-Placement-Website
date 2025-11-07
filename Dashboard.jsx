@@ -262,7 +262,6 @@ const handleMatch = async () => {
         )}
 
         {/* Resume History Tab */}
-        {/* Resume History Tab */}
 {activeTab === "resumes" && (
   <div className="resumes-page">
     <h2>My Uploaded Resumes</h2>
@@ -270,7 +269,6 @@ const handleMatch = async () => {
     {resumes.length === 0 && <p>No resumes analyzed yet.</p>}
 
     {resumes.map((r) => {
-      // Parse JSON feedback safely
       let parsedFeedback;
       try {
         parsedFeedback = JSON.parse(r.feedback);
@@ -290,15 +288,44 @@ const handleMatch = async () => {
               <strong>Date:</strong> {new Date(r.created_at).toLocaleString()}
             </p>
 
+            {/* 🧾 Uploaded Resume Section */}
+            {r.resume_text && (
+              <div
+                className="uploaded-resume"
+                style={{
+                  marginTop: "12px",
+                  padding: "10px",
+                  background: "#f3f4f6",
+                  borderRadius: "8px",
+                  fontSize: "0.9rem",
+                  whiteSpace: "pre-wrap",
+                }}
+              >
+                <strong>📄 Uploaded Resume:</strong>
+                <pre
+                  style={{
+                    whiteSpace: "pre-wrap",
+                    background: "none",
+                    border: "none",
+                    margin: "5px 0 0 0",
+                    padding: 0,
+                  }}
+                >
+                  {r.resume_text}
+                </pre>
+              </div>
+            )}
+
+            {/* 💬 Feedback Summary */}
             {parsedFeedback.summary && (
               <p style={{ marginTop: "10px" }}>
-                <strong>Summary:</strong> {parsedFeedback.summary}
+                <strong>📝 Summary:</strong> {parsedFeedback.summary}
               </p>
             )}
 
             {parsedFeedback.strengths && (
               <div className="feedback-section">
-                <strong>Strengths:</strong>
+                <strong>✅ Strengths:</strong>
                 <ul>
                   {parsedFeedback.strengths.map((item, i) => (
                     <li key={i}>{item}</li>
@@ -309,7 +336,7 @@ const handleMatch = async () => {
 
             {parsedFeedback.weaknesses && (
               <div className="feedback-section">
-                <strong>Weaknesses:</strong>
+                <strong>⚠️ Weaknesses:</strong>
                 <ul>
                   {parsedFeedback.weaknesses.map((item, i) => (
                     <li key={i}>{item}</li>
@@ -320,7 +347,7 @@ const handleMatch = async () => {
 
             {parsedFeedback.suggestions && (
               <div className="feedback-section">
-                <strong>Suggestions:</strong>
+                <strong>💡 Suggestions:</strong>
                 <ul>
                   {parsedFeedback.suggestions.map((item, i) => (
                     <li key={i}>{item}</li>
@@ -334,6 +361,7 @@ const handleMatch = async () => {
     })}
   </div>
 )}
+
 
       </main>
     </div>

@@ -37,7 +37,7 @@ router.get("/history", authMiddleware, async (req, res) => {
   try {
     const userId = req.user.id;
     const result = await db.query(
-      "SELECT id, readiness_score, feedback, created_at FROM resumes WHERE user_id = $1 ORDER BY created_at DESC",
+      "SELECT id, resume_text, readiness_score, feedback, created_at FROM resumes WHERE user_id = $1 ORDER BY created_at DESC",
       [userId]
     );
     res.json(result.rows);
@@ -46,6 +46,7 @@ router.get("/history", authMiddleware, async (req, res) => {
     res.status(500).json({ error: "Failed to load resume history" });
   }
 });
+
 
 // ✅ Resume upload + analysis
 router.post("/upload", authMiddleware, async (req, res) => {
@@ -255,5 +256,3 @@ ${jobDescription}
 
 
 export default router;
-
-resume.js

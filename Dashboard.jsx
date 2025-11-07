@@ -46,27 +46,62 @@ const [matchLoading, setMatchLoading] = useState(false);
   }, []);
 
   // 🔹 Helper: format analysis as plaintext
-  const formatAnalysis = (data) => {
-    if (!data) return "";
-    const { score, summary, strengths, weaknesses, suggestions } = data;
-    let output = `🎯 Resume Readiness Score: ${score}/100\n\n`;
-    if (summary) output += `📝 Summary:\n${summary}\n\n`;
-    if (strengths?.length) {
-      output += `✅ Strengths:\n`;
-      strengths.forEach((s) => (output += `- ${s}\n`));
-      output += `\n`;
+const formatAnalysis = (data) => {
+  if (!data) return "";
+
+  // ✅ Handle both formats (new + old) safely
+  const {
+    total_score,
+    score, // fallback for older responses
+    summary,
+    strengths,
+    weaknesses,
+    suggestions,
+    criteria_breakdown
+  } = data;
+
+  const readinessScore = total_score ?? score ?? 0;
+
+  let output = `🎯 Resume Readiness Score: ${readinessScore}/100\n\n`;
+
+  // 🧩 Optional: include breakdown if available
+  if (criteria_breakdown) {
+    output += "📊 Detailed Scoring Breakdown:\n";
+    for (const [key, val] of Object.entries(criteria_breakdown)) {
+      output += `- ${key.replace(/_/g, " ")}: ${val.score}/${
+        key === "Formatting_and_Presentation" ? 20 :
+        key === "Clarity_and_Structure" ? 15 :
+        key === "Education_and_Experience_Relevance" ? 20 :
+        key === "Technical_Skills_and_Tools" ? 15 :
+        key === "Achievements_and_Impact" ? 15 :
+        key === "Language_and_Professional_Tone" ? 15 : 0
+      } (${val.remarks})\n`;
     }
-    if (weaknesses?.length) {
-      output += `⚠️ Weaknesses:\n`;
-      weaknesses.forEach((w) => (output += `- ${w}\n`));
-      output += `\n`;
-    }
-    if (suggestions?.length) {
-      output += `💡 Suggestions:\n`;
-      suggestions.forEach((s) => (output += `- ${s}\n`));
-    }
-    return output.trim();
-  };
+    output += `\n`;
+  }
+
+  if (summary) output += `📝 Summary:\n${summary}\n\n`;
+
+  if (strengths?.length) {
+    output += `✅ Strengths:\n`;
+    strengths.forEach((s) => (output += `- ${s}\n`));
+    output += `\n`;
+  }
+
+  if (weaknesses?.length) {
+    output += `⚠️ Weaknesses:\n`;
+    weaknesses.forEach((w) => (output += `- ${w}\n`));
+    output += `\n`;
+  }
+
+  if (suggestions?.length) {
+    output += `💡 Suggestions:\n`;
+    suggestions.forEach((s) => (output += `- ${s}\n`));
+  }
+
+  return output.trim();
+};
+
 
   // 🔹 Helper: format match results as plaintext
   const formatMatchResult = (data) => {
@@ -146,7 +181,6 @@ const handleMatch = async () => {
           >
             📄 My Resumes
           </li>
-          <li>⚙️ Settings</li>
         </ul>
         <button className="logout-btn" onClick={handleLogout}>
           Logout
